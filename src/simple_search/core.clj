@@ -45,7 +45,7 @@
 
 (defn score
   "Takes the total-weight of the given answer unless it's over capacity,
-   in which case we return 0."
+  in which case we return 0."
   [answer]
   (if (> (:total-weight answer)
          (:capacity (:instance answer)))
@@ -54,7 +54,7 @@
 
 (defn penalized-score
   "Takes the total-weight of the given answer unless it's over capacity,
-   in which case we return the negative of the total weight."
+  in which case we return the negative of the total weight."
   [answer]
   (if (> (:total-weight answer)
          (:capacity (:instance answer)))
@@ -84,7 +84,7 @@
 
 (defn add-score
   "Computes the score of an answer and inserts a new :score field
-   to the given answer, returning the augmented answer."
+  to the given answer, returning the augmented answer."
   [scorer answer]
   (assoc answer :score (scorer answer)))
 
@@ -129,3 +129,104 @@
 
 ; (time (hill-climber mutate-answer penalized-score knapPI_16_200_1000_1 100000
 ; ))
+
+(defn our-inner-lexi-score [arg]
+  (loop [value (get arg 0)
+         weight (get arg 1)
+         capacity (get arg 2)
+         items (get arg 3)]
+    (if (empty? items)
+      value
+      (let [item (first items)
+            w (:weight item)
+            v (:value item)]
+        (if (> (+ weight w) capacity)
+          (recur value weight capacity (rest items))
+          (recur (+ value v)
+                 (+ weight w)
+                 capacity
+                 (rest items)))))))
+
+
+(defn our-lexi-score-helper
+  [answer]
+  (let [shuffled-items (shuffle (included-items (:items (:instance answer))
+                                                (:choices answer)))
+        capacity (:capacity (:instance answer))
+        value 0
+        weight 0]
+    (loop [value 0
+           weight 0
+           items shuffled-items
+           items-not-added []]
+      (if (empty? items)
+        [value weight capacity items-not-added]
+        (let [item (first items)
+              w (long (:weight item))
+              v (long (:value item))]
+          (if (or (> (+ weight w) capacity) (< (/ v (inc w)) (/ value (inc weight))))
+            (recur value weight (rest items) (conj items-not-added item))
+            (recur (+ value v)
+                   (+ weight w)
+                   (rest items)
+                   items-not-added)))))))
+
+
+(defn our-lexi-score
+  [answer]
+  (our-inner-lexi-score (our-lexi-score-helper answer)))
+
+
+
+
+
+;; (defn our-lexi-score
+;;   [answer]
+;;   (let [shuffled-items (shuffle (included-items (:items (:instance answer))
+;;                                                 (:choices answer)))
+;;         capacity (:capacity (:instance answer))]
+;;     (loop [value 0
+;;            weight 0
+;;            items shuffled-items]
+;;       (if (empty? items)
+;;         value
+;;         (let [item (first items)
+;;               w (long (:weight item))
+;;               v (long (:value item))]
+;;           (if (or (> (+ weight w) capacity) (< (/ v (inc w)) (/ value (inc weight))))
+;;             (recur value weight (rest items))
+;;             (recur (+ value v)
+;;                    (+ weight w)
+;;                    (rest items))))))))
+
+(defn our-hill-climber
+  [mutator scorer instance max-tries]
+  (loop [current-best (add-score scorer (random-answer instance))
+         num-tries 1]
+    (let [new-answer (add-score scorer (mutator current-best))]
+      (if (>= num-tries max-tries)
+        current-best
+        (if (> (:score new-answer)
+               (:score current-best))
+          (recur new-answer (inc num-tries))
+          (recur current-best (inc num-tries)))))))
+
+
+(defn our-penalized-score
+  [answer]
+  (if (> (:total-weight answer)
+         (:capacity (:instance answer)))
+    (- (:total-weight answer))
+    (:total-value answer)))
+
+
+(defn our-mutate-choices
+  [choices]
+  (let [mutation-rate (/ 1 (count choices))]
+    (map #(if (< (rand) mutation-rate) (- 1 %) %) choices)))
+
+
+(defn our-mutate-answer
+  [answer]
+  (make-answer (:instance answer)
+               (our-mutate-choices (:choices answer))))

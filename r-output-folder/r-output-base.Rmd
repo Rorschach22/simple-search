@@ -1,0 +1,98 @@
+---
+title: "r-output-base"
+output: html_document
+---
+```{r}
+library("ggplot2")
+library("rpart")
+library("rpart.plot")
+library("alr4")
+library("lsmeans")
+library("knitr")
+```
+###Introduction
+
+In this set of experiments we compared 3 different scoring mechanisms. First being Hill climber with a penalized score. Second is Hill climber with lexi score. Third is Hill climber with our modified lexi score. We use hill climber all across the board as well as the basic mutation rate of 1/n the only thing altered is the scoring. In our version of the scoring we added a condition that took density into account. Like normal lexi score, we randomly add items into our first bag. The list of items in the bag is then shuffled into a random order. From there, we process the list of items and only add the item if two conditions are met. The weight of adding the item to the bag must not exceed the capacity of the bag, and the density of the item (known as value over weight) must exceed the density of the bag as a whole. This method ensures that the first item is always added into our bag, as the bags starting density is 0. At this point, variance plays a heavy role in what items are allowed in. If we were to add the most dense item first, we could add no other items. Therefore, the randomness of the initial shuffle of the list of items dictates the score of the bag. In order to counteract this variance, we then run the regular lexi score on the list of items that were not added to the bag. We did 50 runs with 1000 tries each
+
+###Experimental Setup
+
+We applied our three scoring systems to eighteen different knapsack setups, 9 with low capacity and 9 with high. We used the 11, 13, and 16 generations, each with 20, 200, 1000 items. Out of these generations, we took the 4th and 93rd knapsacks, resulting in 18 total. 
+
+###Results
+
+
+For our 18 graphs we generated all of the wilcoxon pairwise tests so we have the p-value test comparisons for all of them but we will not explore all of them.
+
+
+```{r}
+data_50_runs_1000_tries_93 <- read.csv("../data/data_50_runs_1000tries_93.txt", sep=" ")
+data_50_runs_1000_tries_93$Non_negative_score = ifelse(data_50_runs_1000_tries_93$Score<0, 0, data_50_runs_1000_tries_93$Score)
+```
+
+```{r}
+data_50_runs_1000_tries_4 <- read.csv("../data/data_50_runs_1000tries_4.txt", sep=" ")
+data_50_runs_1000_tries_4$Non_negative_score = ifelse(data_50_runs_1000_tries_4$Score<0, 0, data_50_runs_1000_tries_4$Score)
+```
+
+
+```{r}
+twenty_item_problems = subset(data_50_runs_1000_tries_4, Problem=="knapPI_11_20_1000_4" | Problem=="knapPI_13_20_1000_4" | Problem=="knapPI_16_20_1000_4")
+
+ggplot(twenty_item_problems, aes(Search_method, Non_negative_score)) + geom_boxplot() + facet_grid(. ~ Problem)
+```
+
+
+
+```{r}
+two_hundren_item_problems = subset(data_50_runs_1000_tries_4, Problem=="knapPI_11_200_1000_4" | Problem=="knapPI_13_200_1000_4" | Problem=="knapPI_16_200_1000_4")
+
+ggplot(two_hundren_item_problems, aes(Search_method, Non_negative_score)) + geom_boxplot() + facet_grid(. ~ Problem)
+```
+
+Looking at the plot above on the far right we can see that for the knapPI_16_200_1000_4 that there is a significant difference, we rand a wilcox test to prove it. When we ran it on regular Lexi score vs our Lexi score we came up with a p-value of 5.9e-16 which shows there is a significant difference between Lexi-Score and Our-lexi-Score.
+
+
+
+```{r}
+one_thousand_item_problems = subset(data_50_runs_1000_tries_4, Problem=="knapPI_11_1000_1000_4" | Problem=="knapPI_13_1000_1000_4" | Problem=="knapPI_16_1000_1000_4")
+
+ggplot(one_thousand_item_problems, aes(Search_method, Non_negative_score)) + geom_boxplot() + facet_grid(. ~ Problem)
+```
+
+Looking at the plot above on the far right we can see that for the knapPI_16_1000_1000_4 that there is a significant difference, we rand a wilcox test to prove it. When we ran it on regular Lexi score vs our Lexi score we came up with a p-value of 5.9e-16 which shows there is a significant difference between Lexi-Score and Our-lexi-Score.
+
+Also the far left for knapPI_11_1000_1000_4 comparing Lexi-Score vs Our-Lexi-Score we have a p-value of 2e-16 so there is a significant difference between the two.
+
+```{r}
+twenty_item_problems = subset(data_50_runs_1000_tries_93, Problem=="knapPI_11_20_1000_93" | Problem=="knapPI_13_20_1000_93" | Problem=="knapPI_16_20_1000_93")
+
+ggplot(twenty_item_problems, aes(Search_method, Non_negative_score)) + geom_boxplot() + facet_grid(. ~ Problem)
+```
+```{r}
+two_hundren_item_problems = subset(data_50_runs_1000_tries_93, Problem=="knapPI_11_200_1000_93" | Problem=="knapPI_13_200_1000_93" | Problem=="knapPI_16_200_1000_93")
+
+ggplot(two_hundren_item_problems, aes(Search_method, Non_negative_score)) + geom_boxplot() + facet_grid(. ~ Problem)
+```
+
+```{r}
+one_thousand_item_problems = subset(data_50_runs_1000_tries_93, Problem=="knapPI_11_1000_1000_93" | Problem=="knapPI_13_1000_1000_93" | Problem=="knapPI_16_1000_1000_93")
+
+ggplot(one_thousand_item_problems, aes(Search_method, Non_negative_score)) + geom_boxplot() + facet_grid(. ~ Problem)
+```
+
+```{r}
+pairwise.wilcox.test(data_50_runs_1000_tries_4$Non_negative_score, data_50_runs_1000_tries_4$Search_method)
+
+pairwise.wilcox.test(data_50_runs_1000_tries_4$Non_negative_score, interaction(data_50_runs_1000_tries_4$Search_method, data_50_runs_1000_tries_4$Problem))
+```
+
+
+```{r}
+pairwise.wilcox.test(data_50_runs_1000_tries_93$Non_negative_score, data_50_runs_1000_tries_93$Search_method)
+
+pairwise.wilcox.test(data_50_runs_1000_tries_93$Non_negative_score, interaction(data_50_runs_1000_tries_93$Search_method, data_50_runs_1000_tries_93$Problem))
+```
+
+
+
+
